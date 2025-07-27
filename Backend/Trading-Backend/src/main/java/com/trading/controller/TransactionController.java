@@ -1,0 +1,43 @@
+package com.trading.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.trading.modal.User;
+import com.trading.modal.Wallet;
+import com.trading.modal.WalletTransaction;
+import com.trading.service.UserService;
+import com.trading.service.WalletService;
+
+@RestController
+@RequestMapping("/api/transactions")
+public class TransactionController {
+
+    @Autowired
+    private WalletService walletService;
+
+    @Autowired
+    private UserService userService;
+
+    @GetMapping("")
+    public ResponseEntity<List<WalletTransaction>> getUserTransactions(
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        
+        User user = userService.findUserProfileByJwt(jwt);
+        Wallet wallet = walletService.getUserWallet(user);
+
+        if (wallet.getId() == null) {
+            wallet = walletService.createWalletIfAbsent(user); // ✅ Safely persist if needed
+        }
+
+        List<WalletTransaction> transactions = walletService.getWalletTransactions(wallet);
+
+        return ResponseEntity.ok(transactions);
+    }
+}

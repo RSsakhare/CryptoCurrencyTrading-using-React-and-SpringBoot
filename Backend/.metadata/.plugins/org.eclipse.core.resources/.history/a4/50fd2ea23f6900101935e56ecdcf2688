@@ -1,0 +1,72 @@
+package com.trading.service;
+
+import java.util.ArrayList;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.trading.exception.WatchlistNotFoundException;
+import com.trading.modal.Coin;
+import com.trading.modal.User;
+import com.trading.modal.Watchlist;
+import com.trading.repository.CoinRepository;
+import com.trading.repository.UserRepository;
+import com.trading.repository.WatchlistRepository;
+
+@Service
+public class WatchlistServiceImpl implements WatchlistService {
+
+    @Autowired
+    private WatchlistRepository watchlistRepository;
+
+    @Autowired
+    private CoinRepository coinRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Override
+    public Watchlist findUserWatchlist(Long userId) {
+        return Optional.ofNullable(watchlistRepository.findByUserId(userId))
+            .orElseThrow(() -> new WatchlistNotFoundException("Watchlist not found for user ID: " + userId));
+    }
+
+    @Override
+    public Watchlist createWatchlist(User user) {
+        Watchlist watchlist = new Watchlist();
+        watchlist.setUser(user);
+        watchlist.setCoins(new ArrayList<>());
+        return watchlistRepository.save(watchlist);
+    }
+
+    @Override
+    public Watchlist findById(Long id) {
+        return watchlistRepository.findById(id)
+            .orElseThrow(() -> new WatchlistNotFoundException("Watchlist not found for ID: " + id));
+    }
+
+    @Override
+    public Watchlist addCoinToWatchlist(Long userId, String coinName) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+        Watchlist watchlist = watchlistRepository.findByUserId(userId);
+        if (watchlist == null) {
+            watchlist = createWatchlist(user);
+        }
+
+        Coin coin = coinRepository.findByNameIgnoreCase(coinName)
+            .orElseThrow(() -> new RuntimeException("Coin not found: " + coinName));
+
+        if (watchlist.getCoins() == null) {
+            watchlist.setCoins(new ArrayList<>());
+        }
+
+        if (!watchlist.getCoins().contains(coin)) {
+            watchlist.getCoins().add(coin);
+        }
+
+        return watchlistRepository.save(watchlist);
+    }
+}
